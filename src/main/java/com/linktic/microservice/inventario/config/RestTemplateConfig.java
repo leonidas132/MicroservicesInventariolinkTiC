@@ -16,15 +16,12 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 public class RestTemplateConfig {
 
-    @Value("${app.product-service.timeout:3000}") // milisegundos
+    @Value("${app.product-service.timeout:3000}")
     private int timeout;
 
     @Bean
     public RestTemplate restTemplate() {
-        // Convertir el timeout a objeto Timeout
         Timeout requestTimeout = Timeout.ofMilliseconds(timeout);
-
-        // Configurar conexiones con el nuevo enfoque
         ConnectionConfig connectionConfig = ConnectionConfig.custom()
                 .setSocketTimeout(requestTimeout)
                 .setConnectTimeout(requestTimeout)

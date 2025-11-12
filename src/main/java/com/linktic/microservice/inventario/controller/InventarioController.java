@@ -94,7 +94,6 @@ public class InventarioController {
         }
     }
     
-    // Métodos auxiliares para formatear respuestas JSON API
     private Map<String, Object> crearRespuestaJsonApi(Inventario inventario) {
         Map<String, Object> respuesta = new HashMap<>();
         Map<String, Object> datos = new HashMap<>();

@@ -40,17 +40,14 @@ public class InventarioServiceImpl implements InventarioService {
     public Map<String, Object> consultarCantidadDisponible(Long productoId) {
         logger.info("Consultando cantidad disponible para producto ID: {}", productoId);
         
-        // 1. Obtener información del producto del microservicio de productos
         ProductoResponse productoResponse = productoServiceClient.obtenerProducto(productoId);
         if (productoResponse == null) {
             throw new InventarioServiceException("Producto no encontrado con ID: " + productoId);
         }
 
-        // 2. Obtener información del inventario local
         Optional<Inventario> inventario = inventarioRepository.findByProductoId(productoId);
         Integer cantidadDisponible = inventario.map(Inventario::getCantidad).orElse(0);
 
-        // 3. Construir respuesta combinada
         Map<String, Object> respuesta = new HashMap<>();
         respuesta.put("producto_id", productoId);
         respuesta.put("producto_nombre", productoResponse.getData().getAttributes().getNombre());
@@ -75,20 +72,17 @@ public class InventarioServiceImpl implements InventarioService {
         logger.info("Actualizando inventario por compra - Producto ID: {}, Cantidad comprada: {}", 
                    productoId, cantidadComprada);
         
-        // Validaciones básicas
         if (cantidadComprada <= 0) {
             throw new InventarioServiceException("La cantidad comprada debe ser mayor a 0");
         }
-
-        // Buscar inventario existente
+        
         Optional<Inventario> inventarioOpt = inventarioRepository.findByProductoId(productoId);
         Inventario inventario;
 
         if (inventarioOpt.isPresent()) {
             inventario = inventarioOpt.get();
             int nuevaCantidad = inventario.getCantidad() - cantidadComprada;
-            
-            // Validar stock suficiente
+           
             if (nuevaCantidad < 0) {
                 throw new InventarioServiceException(
                     "Stock insuficiente. Disponible: " + inventario.getCantidad() + 
@@ -100,11 +94,9 @@ public class InventarioServiceImpl implements InventarioService {
         } else {
             throw new InventarioServiceException("No existe inventario para el producto con ID: " + productoId);
         }
-
-        // Guardar cambios
+        
         Inventario inventarioActualizado = inventarioRepository.save(inventario);
         
-        // EMITIR EVENTO cuando el inventario cambia
         eventPublisher.publicarEventoInventarioCambiado(productoId, inventarioActualizado.getCantidad());
         
         logger.info("Inventario actualizado exitosamente - Producto ID: {}, Nueva cantidad: {}", 
@@ -112,8 +104,6 @@ public class InventarioServiceImpl implements InventarioService {
 
         return inventarioActualizado;
     }
-
-    // === OPERACIONES ADICIONALES BÁSICAS ===
 
     @Override
     @Transactional(readOnly = true)
@@ -123,25 +113,22 @@ public class InventarioServiceImpl implements InventarioService {
 
     @Override
     public Inventario crearInventario(Inventario inventario) {
-        // Validar que el producto exista
+
         ProductoResponse producto = productoServiceClient.obtenerProducto(inventario.getProductoId());
         if (producto == null) {
             throw new InventarioServiceException("El producto con ID " + inventario.getProductoId() + " no existe");
         }
 
-        // Validar que no exista ya
         if (inventarioRepository.findByProductoId(inventario.getProductoId()).isPresent()) {
             throw new InventarioServiceException("Ya existe inventario para este producto");
         }
 
-        // Validar cantidad
         if (inventario.getCantidad() < 0) {
             throw new InventarioServiceException("La cantidad no puede ser negativa");
         }
 
         Inventario inventarioCreado = inventarioRepository.save(inventario);
         
-        // EMITIR EVENTO de creación
         eventPublisher.publicarEventoInventarioCambiado(inventarioCreado.getProductoId(), inventarioCreado.getCantidad());
         
         return inventarioCreado;
@@ -149,7 +136,7 @@ public class InventarioServiceImpl implements InventarioService {
 
     @Override
     public Inventario actualizarInventario(Long productoId, Integer nuevaCantidad) {
-        // Validar cantidad
+
         if (nuevaCantidad < 0) {
             throw new InventarioServiceException("La cantidad no puede ser negativa");
         }
@@ -161,7 +148,6 @@ public class InventarioServiceImpl implements InventarioService {
         inventario.setCantidad(nuevaCantidad);
         Inventario inventarioActualizado = inventarioRepository.save(inventario);
         
-        // EMITIR EVENTO solo si la cantidad cambió
         if (cantidadAnterior != nuevaCantidad) {
             eventPublisher.publicarEventoInventarioCambiado(productoId, nuevaCantidad);
         }
@@ -176,7 +162,6 @@ public class InventarioServiceImpl implements InventarioService {
         
         inventarioRepository.delete(inventario);
         
-        // EMITIR EVENTO de eliminación (cantidad = 0)
         eventPublisher.publicarEventoInventarioCambiado(productoId, 0);
     }
 }
